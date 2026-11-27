@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "WaitingOrder": {
+      "title": "WaitingOrder",
+      "description": "Client website request submitted from the public inquiry form into the waiting orders queue.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Client full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "contactInfo": {
+          "type": "string",
+          "description": "Client WhatsApp number or email address.",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "websiteType": {
+          "type": "string",
+          "description": "Requested niche or website category.",
+          "enum": [
+            "clothing",
+            "perfume",
+            "shoes",
+            "accessories",
+            "cafe",
+            "wedding",
+            "custom"
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional project details written by the client.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "status": {
+          "type": "string",
+          "description": "Current workflow state of the waiting order.",
+          "enum": [
+            "waiting",
+            "contacted",
+            "in_progress",
+            "completed"
+          ]
+        },
+        "lang": {
+          "type": "string",
+          "description": "Language active when the client submitted the request.",
+          "enum": [
+            "ar",
+            "en"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the order was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the order was last updated."
+        }
+      },
+      "required": [
+        "name",
+        "contactInfo",
+        "websiteType",
+        "notes",
+        "status",
+        "lang",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized studio administrator record keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email address.",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin entry was recorded."
+        }
+      },
+      "required": [
+        "email",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/waiting_orders/{orderId}": {
+      "schema": {
+        "$ref": "#/entities/WaitingOrder"
+      },
+      "description": "Private waiting orders submitted by prospective studio clients. Public create-only; owner-only read, list, update, and delete."
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "$ref": "#/entities/AdminUser"
+      },
+      "description": "Studio administrator directory. Only readable by the verified owner."
+    }
+  }
+}

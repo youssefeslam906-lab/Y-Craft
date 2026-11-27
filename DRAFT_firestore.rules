@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerEmail() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'youssefeslam906@gmail.com';
+    }
+
+    function isAdmin() {
+      return isOwnerEmail()
+        || (
+          isSignedIn()
+          && request.auth.token.email_verified == true
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
+    // Validation Blueprint: WaitingOrder
+    function isValidWaitingOrder(data) {
+      return data.keys().hasAll([
+          'name',
+          'contactInfo',
+          'websiteType',
+          'notes',
+          'status',
+          'lang',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'name',
+          'contactInfo',
+          'websiteType',
+          'notes',
+          'status',
+          'lang',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.contactInfo is string && data.contactInfo.size() >= 3 && data.contactInfo.size() <= 160
+        && data.websiteType in ['clothing', 'perfume', 'shoes', 'accessories', 'cafe', 'wedding', 'custom']
+        && data.notes is string && data.notes.size() <= 1000
+        && data.status in ['waiting', 'contacted', 'in_progress', 'completed']
+        && data.lang in ['ar', 'en']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: AdminUser
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'createdAt'])
+        && data.keys().hasOnly(['email', 'createdAt'])
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 160
+        && data.email == 'youssefeslam906@gmail.com'
+        && data.createdAt is timestamp;
+    }
+
+    // Waiting Orders Collection
+    match /waiting_orders/{orderId} {
+      // Only the verified owner can list or read waiting orders (PII protection)
+      allow get: if isValidId(orderId) && isAdmin();
+      allow list: if isOwnerEmail();
+
+      // Public website visitors can submit a new waiting order with strict schema + 'waiting' status
+      allow create: if isValidId(orderId)
+        && isValidWaitingOrder(incoming())
+        && incoming().status == 'waiting'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      // Only the verified admin can update workflow status
+      allow update: if isValidId(orderId)
+        && isAdmin()
+        && isValidWaitingOrder(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      // Only the verified admin can delete an order
+      allow delete: if isValidId(orderId) && isAdmin();
+    }
+
+    // Admin Directory
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isOwnerEmail() && request.auth.uid == adminId;
+      allow list: if false;
+      allow create: if isValidId(adminId)
+        && isOwnerEmail()
+        && request.auth.uid == adminId
+        && isValidAdminUser(incoming())
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

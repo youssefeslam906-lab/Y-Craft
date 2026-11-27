@@ -1,0 +1,6 @@
+{
+  "name": "Y-CRAFT Web Design Studio",
+  "description": "Bespoke web design, brand systems, and front-end engineering studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
